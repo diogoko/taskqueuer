@@ -20,6 +20,8 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
+require 'bigdecimal'
+require 'bigdecimal/util'
 require 'date'
 require 'singleton'
 
@@ -88,7 +90,7 @@ class Plan
     @bookings.each do |b|
       day = b.date.strftime('%Y-%m-%d')
       b.task_bookings.each do |t|
-        puts "#{day}\t#{t.hours}\t#{t.task.description}"
+        puts "#{day}\t#{t.hours.to_s('F')}\t#{t.task.description}"
       end
     end
   end
@@ -97,7 +99,7 @@ class Plan
     @project.tasks.each do |t|
       first_day = t.task_bookings.first.day_booking.date
       last_day = t.task_bookings.last.day_booking.date
-      puts "#{t.description}\t#{t.effort}\t#{first_day}\t#{last_day}"
+      puts "#{t.description}\t#{t.effort.to_s('F')}\t#{first_day}\t#{last_day}"
     end
   end
 end
@@ -146,7 +148,7 @@ end
 
 
 def task(description, effort = 0)
-  Project.instance.add_task(description, effort)
+  Project.instance.add_task(description, effort.to_d)
 end
 
 
