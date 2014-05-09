@@ -86,20 +86,20 @@ class Plan
     @bookings = bookings
   end
   
-  def export_bookings
+  def export_bookings(f)
     @bookings.each do |b|
       day = b.date.strftime('%Y-%m-%d')
       b.task_bookings.each do |t|
-        puts "#{day}\t#{t.hours.to_s('F')}\t#{t.task.description}"
+        f.puts "#{day}\t#{t.hours.to_s('F')}\t#{t.task.description}"
       end
     end
   end
   
-  def export_dates
+  def export_dates(f)
     @project.tasks.each do |t|
       first_day = t.task_bookings.first.day_booking.date
       last_day = t.task_bookings.last.day_booking.date
-      puts "#{t.description}\t#{t.effort.to_s('F')}\t#{first_day}\t#{last_day}"
+      f.puts "#{t.description}\t#{t.effort.to_s('F')}\t#{first_day}\t#{last_day}"
     end
   end
 end
@@ -165,6 +165,6 @@ end
 load 'example'
 
 plan = Project.instance.plan
-plan.export_bookings
+plan.export_bookings($stdout)
 puts
-plan.export_dates
+plan.export_dates($stdout)
