@@ -162,9 +162,40 @@ def daily_working_hours(hours)
 end
 
 
-load 'example'
+if ARGV.length >= 2 then
+  command = ARGV.shift
+  if ['dates', 'bookings'].include?(command) then
+    input_filename = ARGV.shift
+    output = ARGV.shift
+    if output then
+      output = IO.open(output, 'r')
+    else
+      output = $stdout
+    end
 
-plan = Project.instance.plan
-plan.export_bookings($stdout)
-puts
-plan.export_dates($stdout)
+    load input_filename
+    plan = Project.instance.plan
+    
+    case command
+      when 'dates'
+        plan.export_dates(output)
+      when 'bookings'
+        plan.export_bookings(output)
+    end
+  else
+    puts "Invalid command: #{command}"
+  end
+else
+  puts <<-EOF
+tq COMMAND INPUT [OUTPUT]
+
+  dates       Schedule all tasks from file INPUT and print the start and end
+              date of each one.
+
+  bookings    Schedule all tasks from file INPUT and print the planned amount
+              of work for each task in each day.
+
+If OUTPUT is not specified, STDOUT will be assumed.
+  EOF
+end
+
