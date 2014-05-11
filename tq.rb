@@ -33,6 +33,14 @@ class Task
     @effort = effort
     @task_bookings = []
   end
+  
+  def first_day
+    @task_bookings.first.day_booking.date
+  end
+  
+  def last_day
+    @task_bookings.last.day_booking.date
+  end
 end
 
 
@@ -96,9 +104,7 @@ class Plan
   
   def export_dates(f)
     @project.tasks.each do |t|
-      first_day = t.task_bookings.first.day_booking.date
-      last_day = t.task_bookings.last.day_booking.date
-      f.puts "#{t.description}\t#{t.effort.to_s('F')}\t#{first_day}\t#{last_day}"
+      f.puts "#{t.description}\t#{t.effort.to_s('F')}\t#{t.first_day}\t#{t.last_day}"
     end
   end
 end
