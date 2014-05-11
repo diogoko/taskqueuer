@@ -138,6 +138,19 @@ class TestAliases < Test::Unit::TestCase
 end
 
 
+class TestDayEnumerator < Test::Unit::TestCase
+  def setup
+    @e = DayEnumerator.new(Date.strptime('2014-05-11', '%Y-%m-%d'))
+  end
+  
+  def test_simple
+    assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-13', '%Y-%m-%d'), @e.next)
+  end
+end
+
+
 class TestProject < Test::Unit::TestCase
   def setup
     @p = Project.new

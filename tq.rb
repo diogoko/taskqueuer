@@ -110,6 +110,20 @@ class Plan
 end
 
 
+class DayEnumerator
+  def initialize(start)
+    @current = start
+  end
+  
+  def next
+    d = @current
+    @current = @current.next_day
+    
+    return d
+  end
+end
+
+
 class Project
   attr_accessor :start, :daily_working_hours
   
@@ -124,13 +138,7 @@ class Project
   end
   
   def plan
-    days = Enumerator.new do |yielder|
-      d = @start
-      loop do
-        yielder.yield d
-        d = d.next_day
-      end
-    end
+    days = DayEnumerator.new(@start)
   
     bookings = [DayBooking.new(days.next, @daily_working_hours)]
     @tasks.each do |t|
