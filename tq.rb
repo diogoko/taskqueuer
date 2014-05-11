@@ -119,7 +119,7 @@ class Project
   
   def plan
     days = Enumerator.new do |yielder|
-      d = Date.strptime(@start, '%Y-%m-%d')
+      d = @start
       loop do
         yielder.yield d
         d = d.next_day
@@ -150,7 +150,7 @@ end
 
 
 def start(date)
-  $tq_current_project.start = date
+  $tq_current_project.start = Date.strptime(date, '%Y-%m-%d')
 end
 
 
