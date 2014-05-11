@@ -160,32 +160,33 @@ end
 
 
 
-if ARGV.length >= 2 then
-  command = ARGV.shift
-  if ['dates', 'bookings'].include?(command) then
-    input_filename = ARGV.shift
-    output = ARGV.shift
-    if output then
-      output = IO.open(output, 'r')
-    else
-      output = $stdout
-    end
+if __FILE__ == $0 then
+  if ARGV.length >= 2 then
+    command = ARGV.shift
+    if ['dates', 'bookings'].include?(command) then
+      input_filename = ARGV.shift
+      output = ARGV.shift
+      if output then
+        output = IO.open(output, 'r')
+      else
+        output = $stdout
+      end
 
-    $tq_current_project = Project.new
-    load input_filename
-    plan = $tq_current_project.plan
-    
-    case command
-      when 'dates'
-        plan.export_dates(output)
-      when 'bookings'
-        plan.export_bookings(output)
+      $tq_current_project = Project.new
+      load input_filename
+      plan = $tq_current_project.plan
+      
+      case command
+        when 'dates'
+          plan.export_dates(output)
+        when 'bookings'
+          plan.export_bookings(output)
+      end
+    else
+      puts "Invalid command: #{command}"
     end
   else
-    puts "Invalid command: #{command}"
-  end
-else
-  puts <<-EOF
+    puts <<-EOF
 tq COMMAND INPUT [OUTPUT]
 
   dates       Schedule all tasks from file INPUT and print the start and end
@@ -195,6 +196,6 @@ tq COMMAND INPUT [OUTPUT]
               of work for each task in each day.
 
 If OUTPUT is not specified, STDOUT will be assumed.
-  EOF
+    EOF
+  end
 end
-
