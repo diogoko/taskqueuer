@@ -23,7 +23,6 @@
 require 'bigdecimal'
 require 'bigdecimal/util'
 require 'date'
-require 'singleton'
 
 
 class Task
@@ -106,8 +105,6 @@ end
 
 
 class Project
-  include Singleton
-
   attr_accessor :start, :daily_working_hours
   
   attr_reader :tasks
@@ -148,18 +145,19 @@ end
 
 
 def task(description, effort = 0)
-  Project.instance.add_task(description, effort.to_d)
+  $tq_current_project.add_task(description, effort.to_d)
 end
 
 
 def start(date)
-  Project.instance.start = date
+  $tq_current_project.start = date
 end
 
 
 def daily_working_hours(hours)
-  Project.instance.daily_working_hours = hours
+  $tq_current_project.daily_working_hours = hours
 end
+
 
 
 if ARGV.length >= 2 then
@@ -173,8 +171,9 @@ if ARGV.length >= 2 then
       output = $stdout
     end
 
+    $tq_current_project = Project.new
     load input_filename
-    plan = Project.instance.plan
+    plan = $tq_current_project.plan
     
     case command
       when 'dates'
