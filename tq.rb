@@ -155,7 +155,7 @@ end
 
 
 def daily_working_hours(hours)
-  $tq_current_project.daily_working_hours = hours
+  $tq_current_project.daily_working_hours = hours.to_d
 end
 
 
