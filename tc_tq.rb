@@ -160,4 +160,20 @@ class TestProject < Test::Unit::TestCase
     assert_equal(@p.start, @p.tasks[2].first_day)
     assert_equal(@p.start, @p.tasks[2].last_day)
   end
+  
+  def test_many_days
+    task 't1', 2.2
+    task 't2', 1.5
+    task 't3', 3.4
+    
+    p = @p.plan
+    assert_equal(4, p.bookings.size)
+    
+    assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @p.tasks[0].first_day)
+    assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @p.tasks[0].last_day)
+    assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @p.tasks[1].first_day)
+    assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @p.tasks[1].last_day)
+    assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @p.tasks[2].first_day)
+    assert_equal(Date.strptime('2014-05-14', '%Y-%m-%d'), @p.tasks[2].last_day)
+  end
 end
