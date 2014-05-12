@@ -110,27 +110,83 @@ class Plan
 end
 
 
+class SingleDayDefinition
+  def initialize(date)
+    @date = Date.strptime(date, '%Y-%m-%d')
+  end
+  
+  def match?(date)
+    date == @date
+  end
+end
+
+
+class IntervalDayDefinition
+  def initialize(first, last)
+    @first = Date.strptime(first, '%Y-%m-%d')
+    @last = Date.strptime(last, '%Y-%m-%d')
+  end
+  
+  def match?(date)
+    (@first <= date) && (date <= @last)
+  end
+end
+
+
+class DayOfWeekDefinition
+  def initialize(name)
+    @name = name.downcase
+  end
+  
+  def match?(date)
+    (date.strftime('%a').downcase == @name) || (date.strftime('%A').downcase == @name)
+  end
+end
+
+
 class DayEnumerator
-  def initialize(start)
-    @current = start
+  attr_accessor :start
+
+  attr_reader :non_working_days
+
+  def initialize
+    @current = nil
+    @non_working_days = []
+  end
+  
+  def non_working_day?(date)
+    @non_working_days.any? { |d| d.match?(date) }
   end
   
   def next
-    d = @current
+    if @current == nil then
+      @current = @start
+    end
+
+    while non_working_day?(@current)
+      @current = @current.next_day
+    end
+    
+    day = @current
     @current = @current.next_day
     
-    return d
+    return day
+  end
+  
+  def add_non_working_day(day_definition)
+    @non_working_days << day_definition
   end
 end
 
 
 class Project
-  attr_accessor :start, :daily_working_hours
+  attr_accessor :daily_working_hours
   
-  attr_reader :tasks
+  attr_reader :tasks, :day_enumerator
   
   def initialize
     @tasks = []
+    @day_enumerator = DayEnumerator.new
   end
   
   def add_task(description, effort)
@@ -138,15 +194,13 @@ class Project
   end
   
   def plan
-    days = DayEnumerator.new(@start)
-  
-    bookings = [DayBooking.new(days.next, @daily_working_hours)]
+    bookings = [DayBooking.new(@day_enumerator.next, @daily_working_hours)]
     @tasks.each do |t|
       remaining_effort = t.effort
       
       begin
         if bookings.last.full? then
-          bookings << DayBooking.new(days.next, @daily_working_hours)
+          bookings << DayBooking.new(@day_enumerator.next, @daily_working_hours)
         end
         
         remaining_effort = bookings.last.book_task(t, remaining_effort)
@@ -164,7 +218,7 @@ end
 
 
 def start(date)
-  $tq_current_project.start = Date.strptime(date, '%Y-%m-%d')
+  $tq_current_project.day_enumerator.start = Date.strptime(date, '%Y-%m-%d')
 end
 
 
@@ -172,6 +226,21 @@ def daily_working_hours(hours)
   $tq_current_project.daily_working_hours = hours.to_d
 end
 
+
+def non_working_day(on: nil, from: nil, to: nil)
+  if on then
+    begin
+      d = SingleDayDefinition.new(on)
+    rescue ArgumentError
+      d = DayOfWeekDefinition.new(on)
+    end
+    
+    $tq_current_project.day_enumerator.add_non_working_day(d)
+  elsif from && to then
+    d = IntervalDayDefinition.new(from, to)
+    $tq_current_project.day_enumerator.add_non_working_day(d)
+  end
+end
 
 
 if __FILE__ == $0 then

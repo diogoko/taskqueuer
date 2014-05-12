@@ -127,7 +127,7 @@ class TestAliases < Test::Unit::TestCase
   def test_start
     start '2014-05-11'
     
-    assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @p.start)
+    assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @p.day_enumerator.start)
   end
   
   def test_daily_working_hours
@@ -135,18 +135,61 @@ class TestAliases < Test::Unit::TestCase
     
     assert_equal('8'.to_d, @p.daily_working_hours)
   end
+  
+  def test_non_working_day
+    assert_equal(0, @p.day_enumerator.non_working_days.size)
+    
+    non_working_day on: '2014-05-12'
+    assert_equal(1, @p.day_enumerator.non_working_days.size)
+    
+    non_working_day from: '2014-06-01', to: '2014-06-03'
+    assert_equal(2, @p.day_enumerator.non_working_days.size)
+    
+    non_working_day on: 'sunday'
+    assert_equal(3, @p.day_enumerator.non_working_days.size)
+  end
 end
 
 
 class TestDayEnumerator < Test::Unit::TestCase
   def setup
-    @e = DayEnumerator.new(Date.strptime('2014-05-11', '%Y-%m-%d'))
+    @e = DayEnumerator.new
+    @e.start = Date.strptime('2014-05-11', '%Y-%m-%d')
   end
   
   def test_simple
     assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @e.next)
     assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @e.next)
     assert_equal(Date.strptime('2014-05-13', '%Y-%m-%d'), @e.next)
+  end
+  
+  def test_single_day
+    @e.add_non_working_day SingleDayDefinition.new('2014-05-12')
+    
+    assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-13', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-14', '%Y-%m-%d'), @e.next)
+    
+    @e.add_non_working_day SingleDayDefinition.new('2014-05-15')
+    assert_equal(Date.strptime('2014-05-16', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-17', '%Y-%m-%d'), @e.next)
+  end
+  
+  def test_interval
+    @e.add_non_working_day IntervalDayDefinition.new('2014-05-12', '2014-05-14')
+    assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-15', '%Y-%m-%d'), @e.next)
+  end
+  
+  def test_day_of_week
+    @e.add_non_working_day DayOfWeekDefinition.new('sunday')
+    assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-13', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-14', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-15', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-16', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-17', '%Y-%m-%d'), @e.next)
+    assert_equal(Date.strptime('2014-05-19', '%Y-%m-%d'), @e.next)
   end
 end
 
@@ -168,10 +211,10 @@ class TestProject < Test::Unit::TestCase
     p = @p.plan
     assert_equal(1, p.bookings.size)
     
-    assert_equal(@p.start, @p.tasks[0].first_day)
-    assert_equal(@p.start, @p.tasks[0].last_day)
-    assert_equal(@p.start, @p.tasks[2].first_day)
-    assert_equal(@p.start, @p.tasks[2].last_day)
+    assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @p.tasks[0].first_day)
+    assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @p.tasks[0].last_day)
+    assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @p.tasks[2].first_day)
+    assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @p.tasks[2].last_day)
   end
   
   def test_many_days
