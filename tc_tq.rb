@@ -130,10 +130,40 @@ class TestAliases < Test::Unit::TestCase
     assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @p.day_enumerator.start)
   end
   
-  def test_daily_working_hours
+  def test_working_hours_1
     daily_working_hours 8
     
-    assert_equal('8'.to_d, @p.daily_working_hours)
+    assert_equal('8'.to_d, @p.working_hours_registry.working_hours(Date.strptime('2014-05-11', '%Y-%m-%d')))
+  end
+  
+  def test_working_hours_2
+    daily_working_hours 7, on: '2014-05-12'
+    daily_working_hours 8
+    
+    assert_equal('8'.to_d, @p.working_hours_registry.working_hours(Date.strptime('2014-05-11', '%Y-%m-%d')))
+    assert_equal('7'.to_d, @p.working_hours_registry.working_hours(Date.strptime('2014-05-12', '%Y-%m-%d')))
+  end
+  
+  def test_working_hours_3
+    daily_working_hours 6, on: 'sunday'
+    daily_working_hours 7, on: '2014-05-12'
+    daily_working_hours 8
+    
+    assert_equal('8'.to_d, @p.working_hours_registry.working_hours(Date.strptime('2014-05-10', '%Y-%m-%d')))
+    assert_equal('7'.to_d, @p.working_hours_registry.working_hours(Date.strptime('2014-05-12', '%Y-%m-%d')))
+    assert_equal('6'.to_d, @p.working_hours_registry.working_hours(Date.strptime('2014-05-18', '%Y-%m-%d')))
+  end
+  
+  def test_working_hours_4
+    daily_working_hours 6, on: 'sunday'
+    daily_working_hours 7, on: '2014-05-12'
+    daily_working_hours 5, from: '2014-05-11', to: '2014-05-19'
+    daily_working_hours 8
+    
+    assert_equal('8'.to_d, @p.working_hours_registry.working_hours(Date.strptime('2014-05-10', '%Y-%m-%d')))
+    assert_equal('7'.to_d, @p.working_hours_registry.working_hours(Date.strptime('2014-05-12', '%Y-%m-%d')))
+    assert_equal('6'.to_d, @p.working_hours_registry.working_hours(Date.strptime('2014-05-18', '%Y-%m-%d')))
+    assert_equal('5'.to_d, @p.working_hours_registry.working_hours(Date.strptime('2014-05-19', '%Y-%m-%d')))
   end
   
   def test_non_working_day
@@ -194,16 +224,61 @@ class TestDayEnumerator < Test::Unit::TestCase
 end
 
 
+class TestWorkingHoursRegistry < Test::Unit::TestCase
+  def setup
+    @r = WorkingHoursRegistry.new
+  end
+  
+  def test_every_day
+    @r.add WorkingHoursDefinition.new(EveryDayDefinition.new, 5)
+    
+    assert_equal(5, @r.working_hours(Date.strptime('2014-05-12', '%Y-%m-%d')))
+    assert_equal(5, @r.working_hours(Date.strptime('2014-05-13', '%Y-%m-%d')))
+  end
+  
+  def test_single_day
+    @r.add WorkingHoursDefinition.new(SingleDayDefinition.new('2014-05-12'), 6)
+    
+    assert_equal(6, @r.working_hours(Date.strptime('2014-05-12', '%Y-%m-%d')))
+    assert_equal(nil, @r.working_hours(Date.strptime('2014-05-13', '%Y-%m-%d')))
+  end
+  
+  def test_interval
+    @r.add WorkingHoursDefinition.new(IntervalDayDefinition.new('2014-05-12', '2014-05-14'), 7)
+    
+    assert_equal(nil, @r.working_hours(Date.strptime('2014-05-11', '%Y-%m-%d')))
+    assert_equal(7, @r.working_hours(Date.strptime('2014-05-12', '%Y-%m-%d')))
+    assert_equal(7, @r.working_hours(Date.strptime('2014-05-13', '%Y-%m-%d')))
+    assert_equal(7, @r.working_hours(Date.strptime('2014-05-14', '%Y-%m-%d')))
+    assert_equal(nil, @r.working_hours(Date.strptime('2014-05-15', '%Y-%m-%d')))
+  end
+  
+  def test_day_of_week
+    @r.add WorkingHoursDefinition.new(DayOfWeekDefinition.new('sunday'), 8)
+    
+    assert_equal(nil, @r.working_hours(Date.strptime('2014-05-12', '%Y-%m-%d')))
+    assert_equal(nil, @r.working_hours(Date.strptime('2014-05-13', '%Y-%m-%d')))
+    assert_equal(nil, @r.working_hours(Date.strptime('2014-05-14', '%Y-%m-%d')))
+    assert_equal(nil, @r.working_hours(Date.strptime('2014-05-15', '%Y-%m-%d')))
+    assert_equal(nil, @r.working_hours(Date.strptime('2014-05-16', '%Y-%m-%d')))
+    assert_equal(nil, @r.working_hours(Date.strptime('2014-05-17', '%Y-%m-%d')))
+    assert_equal(8, @r.working_hours(Date.strptime('2014-05-18', '%Y-%m-%d')))
+    assert_equal(nil, @r.working_hours(Date.strptime('2014-05-19', '%Y-%m-%d')))
+  end
+end
+
+
 class TestProject < Test::Unit::TestCase
   def setup
     @p = Project.new
     $tq_current_project = @p
     
     start '2014-05-11'
-    daily_working_hours 2
   end
 
   def test_single_day
+    daily_working_hours 2
+    
     task 't1', 0.2
     task 't2', 0.5
     task 't3', 0.4
@@ -218,6 +293,8 @@ class TestProject < Test::Unit::TestCase
   end
   
   def test_many_days
+    daily_working_hours 2
+    
     task 't1', 2.2
     task 't2', 1.5
     task 't3', 3.4
@@ -231,5 +308,24 @@ class TestProject < Test::Unit::TestCase
     assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @p.tasks[1].last_day)
     assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @p.tasks[2].first_day)
     assert_equal(Date.strptime('2014-05-14', '%Y-%m-%d'), @p.tasks[2].last_day)
+  end
+  
+  def test_working_hours
+    daily_working_hours 4, on: '2014-05-12'
+    daily_working_hours 2
+    
+    task 't1', 2.2
+    task 't2', 1.5
+    task 't3', 2.0
+    
+    p = @p.plan
+    assert_equal(2, p.bookings.size)
+    
+    assert_equal(Date.strptime('2014-05-11', '%Y-%m-%d'), @p.tasks[0].first_day)
+    assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @p.tasks[0].last_day)
+    assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @p.tasks[1].first_day)
+    assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @p.tasks[1].last_day)
+    assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @p.tasks[2].first_day)
+    assert_equal(Date.strptime('2014-05-12', '%Y-%m-%d'), @p.tasks[2].last_day)
   end
 end

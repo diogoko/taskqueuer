@@ -110,6 +110,13 @@ class Plan
 end
 
 
+class EveryDayDefinition
+  def match?(date)
+    true
+  end
+end
+
+
 class SingleDayDefinition
   def initialize(date)
     @date = Date.strptime(date, '%Y-%m-%d')
@@ -179,14 +186,44 @@ class DayEnumerator
 end
 
 
-class Project
-  attr_accessor :daily_working_hours
+class WorkingHoursDefinition
+  attr_reader :day_definition, :working_hours
+
+  def initialize(day_definition, working_hours)
+    @day_definition = day_definition
+    @working_hours = working_hours
+  end
+end
+
+
+class WorkingHoursRegistry
+  def initialize
+    @definitions = []
+  end
   
-  attr_reader :tasks, :day_enumerator
+  def add(definition)
+    @definitions << definition
+  end
+  
+  def working_hours(date)
+    i = @definitions.index { |d| d.day_definition.match? date }
+    
+    if i == nil then
+      nil
+    else
+      @definitions[i].working_hours
+    end
+  end
+end
+
+
+class Project
+  attr_reader :tasks, :day_enumerator, :working_hours_registry
   
   def initialize
     @tasks = []
     @day_enumerator = DayEnumerator.new
+    @working_hours_registry = WorkingHoursRegistry.new
   end
   
   def add_task(description, effort)
@@ -194,13 +231,18 @@ class Project
   end
   
   def plan
-    bookings = [DayBooking.new(@day_enumerator.next, @daily_working_hours)]
+    date = @day_enumerator.next
+    working_hours = @working_hours_registry.working_hours date
+    bookings = [DayBooking.new(date, working_hours)]
+    
     @tasks.each do |t|
       remaining_effort = t.effort
       
       begin
         if bookings.last.full? then
-          bookings << DayBooking.new(@day_enumerator.next, @daily_working_hours)
+          date = @day_enumerator.next
+          working_hours = @working_hours_registry.working_hours date
+          bookings << DayBooking.new(date, working_hours)
         end
         
         remaining_effort = bookings.last.book_task(t, remaining_effort)
@@ -222,8 +264,22 @@ def start(date)
 end
 
 
-def daily_working_hours(hours)
-  $tq_current_project.daily_working_hours = hours.to_d
+def daily_working_hours(hours, on: nil, from: nil, to: nil)
+  if on then
+    begin
+      d = SingleDayDefinition.new(on)
+    rescue ArgumentError
+      d = DayOfWeekDefinition.new(on)
+    end
+  elsif from && to then
+    d = IntervalDayDefinition.new(from, to)
+  else
+    d = EveryDayDefinition.new
+  end
+  
+  whd = WorkingHoursDefinition.new(d, hours.to_d)
+  
+  $tq_current_project.working_hours_registry.add(whd)
 end
 
 
